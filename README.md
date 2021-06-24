@@ -1,2 +1,6 @@
 # asdroadLite 2
 
+#To add to github
+git add ...
+git commit ...
+git push origin dev (or main)
