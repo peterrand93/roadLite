@@ -2,31 +2,27 @@ import pygame
 import os
 import random
 import init
-
-clock = pygame.time.Clock()
-
-pygame.font.init()
+import constants
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 BLUE = (0, 0, 255)
+FPS=15
+SCREENWIDTH, SCREENHEIGHT = 1000, 600
 
-FPS=60
-
-WIDTH, HEIGHT = 1000, 600
-WIN = pygame.display.set_mode((WIDTH, HEIGHT))
+WIN = pygame.display.set_mode((SCREENWIDTH, SCREENHEIGHT))
 pygame.display.set_caption("RoadLite")
 
   
 sc1x0=50
-clock = pygame.time.Clock()
+sc1y0=243
 
 def main():
     characters = []  
-    characters.append(init.character(sc1x0,240,200,240,20,0,0,False,"Peep-01.png"))
-    characters.append(init.character(700,110,200,200,25,0,0,False,"nonfatbutter-01.png"))
+    characters.append(init.character(sc1x0,sc1y0,200,240,20,0,0,False,'peep'))
+    characters.append(init.character(700,110,250,200,25,0,0,False,"nonfatbutter"))
     run=True
     draw=True
     mana=3
@@ -34,26 +30,36 @@ def main():
     endFight=False
     cards = []  
     endTurn=init.popupmenu(800,500,150,int(round(init.textheight/1.2)),['End Turn'],'endTurnBG.png')
-
+    numdiscard= 0
+    cardeffect=(0,0) #manaloss, num2discard
     while run:
         manaPop=init.popupmenu(100,525,18,29,[str(mana)],'manaBG.png') 
 
         OPTION=0
-        #fontcolor=BLACK
-        clock.tick(FPS)
+        constants.clock.tick(FPS)
         characters[0].x=sc1x0
+        characters[0].y=sc1y0
         click=False
-        #attackmenu = init.popupmenu(75,75,120,init.textheight*4)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
                 pygame.QUIT
             if event.type == pygame.MOUSEBUTTONUP:
+                if cardeffect[1]>0:
+                    for i in range(len(cards)):
+                        if cards[i].selected():
+                            print("check")
+                            cards.remove(cards[i])
+                            cardeffect[1]-=1
+                            break
+                else:
+                    cardeffect=init.cardFunction(characters,cards,mana)
+                    #numdiscard=cardeffect(1)
+                    #manaloss=cardeffect(2)
+                    #print(cardeffect)
+                    mana-=cardeffect[0]
                 click=True
-                #if mana>0:
-                manaloss=init.cardFunction(characters,cards,mana)
-                mana-=manaloss
-                    #print(mana)
+                #manaloss=init.cardFunction(characters,cards,mana)
                 if endTurn.option_selected():
                     if characters[1].stunned==False:
                         enemyAttack=random.randrange(0,3)
@@ -75,6 +81,7 @@ def main():
                 
                 
         if draw5:
+            cardeffect=(0,0)
             for i in range(len(characters)):
                 characters[i].reflect=0
             mana=3
@@ -88,7 +95,6 @@ def main():
                 winlose='You Lose!!'
             else:
                 winlose='You Win!!'
-            #pygame.time.delay(2000)
             retry=init.drawGameover(winlose,click)
             if retry:
                 main()
@@ -97,7 +103,8 @@ def main():
             for i in range(len(cards)):
                 cards[i].x=250+i*100
                 cards[i].x0=cards[i].x
-            init.redrawGameWindow(characters,cards,endTurn,manaPop)
-
+            init.redrawGameWindow(characters=characters,cards=cards,endTurn=endTurn,manaPop=manaPop,numdiscard=cardeffect[1],test="testoo")
+            #numdiscard=cardeffect[1]
+            #init.redrawGameWindow(characters,cards,endTurn,manaPop,numdiscard)
 if __name__ == "__main__":
     main()

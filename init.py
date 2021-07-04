@@ -1,7 +1,8 @@
 import pygame
 import os
 import random
-clock = pygame.time.Clock()
+import constants
+#clock = pygame.time.Clock()
 
 pygame.font.init()
 pygame.mixer.init()
@@ -32,23 +33,46 @@ pygame.display.set_caption("RoadLite")
 background=pygame.transform.rotate(pygame.transform.smoothscale(pygame.image.load(
             os.path.join('Assets', "flyingKitchen-01.png")),(WIDTH, HEIGHT)), 0)
 
-def redrawGameWindow(characters,cards,endTurn,manaPop):
+def redrawGameWindow(**kwargs):
+    #characters,cards,endTurn,manaPop, numdiscard, **kwargs):
     WIN.blit(background, (0,0))
-    if characters[0].stunned==True:
+    #for key, value in kwargs.items():
+    if 'numdiscard' in kwargs and kwargs.get("numdiscard")>0:
+        WIN.blit(font1.render("Discard "+str(kwargs.get("numdiscard")), 1, BLACK),(400,50))
+    if kwargs.get('characters')[0].stunned:
         WIN.blit(font1.render("stunned!", 1, BLACK),(75,150))
-    if characters[1].stunned==True:
+    if kwargs.get('characters')[1].stunned:
         WIN.blit(font1.render("stunned!", 1, BLACK),(725,25))
-    for i in range(len(characters)):
-        characters[i].drawChar()
-    #attackmenu.make_popup()
-    endTurn.make_popup()
-    manaPop.make_popup()
-    for i in range(len(cards)):
-        cards[i].cardDraw()
-    #manaleft = font1.render(str(mana), 1, BLACK)
-    #pygame.draw.circle(WIN, BLUE, (100,525), 20)
-    #WIN.blit(manaleft,(100,525))
+    for i in range(len(kwargs.get('characters'))):
+        if 'pause' in kwargs:
+            pass
+        else:
+            kwargs.get('characters')[i].animate()
+        kwargs.get('characters')[i].drawChar()
+        #if kwargs.get('characters')[i].stunned:
+            #print('wut')
+    if 'endTurn' in kwargs:
+        kwargs.get('endTurn').make_popup()
+    if 'manaPop' in kwargs:
+        kwargs.get('manaPop').make_popup()
+    #manaPop.make_popup()
+    if 'cards' in kwargs:
+        for i in range(len(kwargs.get('cards'))):
+            kwargs.get('cards')[i].cardDraw()
     pygame.display.update()
+    if 'pause' in kwargs:
+        t=0
+        while t<400 :
+            WIN.blit(background, (0,0))
+            kwargs.get('characters')[0].x+=5
+            kwargs.get('characters')[0].y-=1
+            kwargs.get('characters')[0].drawChar()
+            kwargs.get('characters')[1].drawChar()
+            pygame.display.update()
+        #print('pase')
+            pygame.time.delay(10)
+            t+=10
+
 
 def drawGameover(text,click):
     endScreen=pygame.Surface((WIDTH,HEIGHT))
@@ -90,15 +114,28 @@ class character():
         self.height = height
         self.health = health
         self.reflect = reflect
-        pic = pygame.image.load(
-            os.path.join('Assets', model)).convert_alpha()
-        self.model = pygame.transform.rotate(pygame.transform.smoothscale(pic,(width, height)), 0)
+        self.sprites=[]
+        self.model=model
+        for j in range(8):
+            self.sprites.append(pygame.transform.rotate(pygame.transform.smoothscale(pygame.image.load(
+                os.path.join('Assets/charDes/'+self.model, self.model+'-animation-0'+str(j+1)+'.png')).convert_alpha(),(width, height)), 0))
+        #pic = pygame.image.load(
+            #os.path.join('Assets', model)).convert_alpha()
+        self.currentSprite=1
+        #self.model = pygame.transform.rotate(pygame.transform.smoothscale(pic,(width, height)), 0)
+        #self.model = self.sprites[self.currentSprite]
     def drawChar(self):
         WIN.blit(self.model,(self.x,self.y))
         pygame.draw.rect(WIN, (0,0,0), (self.x-3, self.y - 33, self.width+6, 16))
         pygame.draw.rect(WIN, (255,0,0), (self.x, self.y - 30, self.width, 10))
         if self.health>0:
             pygame.draw.rect(WIN, (0,128,0), (self.x, self.y - 30, self.width*self.health/self.health0, 10))
+    def animate(self):
+        if self.currentSprite>8:
+            self.currentSprite=1
+        #print(self.currentSprite)
+        self.model = self.sprites[self.currentSprite-1]
+        self.currentSprite+=1
 
 
 class popupmenu():
@@ -180,7 +217,7 @@ class card():
             resource_path(path)).convert_alpha(),(self.width, self.height)), 0)
         cardRect = cardSurf0.get_rect()
         mousex,mousey=pygame.mouse.get_pos()
-        WIN.blit(cardSurf,(self.x,self.y))
+        #WIN.blit(cardSurf,(self.x,self.y))
         if cardRect.collidepoint(mousex-self.x0, mousey-self.y0):
             self.y = 100
             self.x = 400
@@ -191,7 +228,9 @@ class card():
             self.x=self.x0
             self.width=self.width0
             self.height=self.height0
-        #WIN.blit(cardSurf,(self.x,self.y))
+        cardSurf = pygame.transform.rotate(pygame.transform.smoothscale(pygame.image.load(
+            resource_path(path)).convert_alpha(),(self.width, self.height)), 0)
+        WIN.blit(cardSurf,(self.x,self.y))
 
     def selected(self):
         cardSurf = pygame.Surface((self.width0, self.height0),pygame.SRCALPHA)
@@ -203,19 +242,17 @@ class card():
 def discardMode(cards,numcards):
     j=0
     toGo=[]
-    while j<numcards:
-        clock.tick(15)
+    while j<numcards and numcards > 0:
+        #clock.tick(15)
+        
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONUP:
                 for i in range(len(cards)):
                     if cards[i].selected():
-                        print('selected')
                         toGo.append(i)
                         j+=1
                         if j >= numcards:
-                            print(toGo)
                             toGo = sorted(toGo,reverse=True)
-                            print(toGo)
                             for p in toGo:
                                 cards.remove(cards[p])
                             return
@@ -224,14 +261,17 @@ def discardMode(cards,numcards):
 def cardFunction(characters,cards,mana):
     cardChosen=False
     manaloss=0
+    numDiscard=0
     damage=0
     if characters[0].stunned==True:
         #WIN.blit(font1.render("stunned!", 1, BLACK),(100,100))
-        return manaloss
+        return [manaloss, numDiscard]
     for i in range(len(cards)):
         TEXT = cards[i].selected()
         if TEXT=='deal3dmg.png' and mana > 0:
             characters[0].x+=100
+            #characters[0].model=pygame.transform.rotate(pygame.transform.smoothscale(pygame.image.load(
+            #    os.path.join('Assets/charDes/peep/','peep-attack-01.png')).convert_alpha(),(characters[0].width, characters[0].height)), 0)
             damage=3
             cards.remove(cards[i])
             cardChosen=True
@@ -266,8 +306,9 @@ def cardFunction(characters,cards,mana):
             manaloss=2
         if TEXT=='disc2gain2mana.png' and mana > 0:
             cards.remove(cards[i])
-            j=0
-            discardMode(cards,2)
+            #j=0
+            #discardMode(cards,2)
+            numDiscard=2
             #while len(cards)>0 and j < len(cards)+1 and j <2:
                #cards.remove(cards[0])
                 #j+=1
@@ -295,11 +336,12 @@ def cardFunction(characters,cards,mana):
                 manaloss=0
         if TEXT=='disc1draw1.png':
             cards.remove(cards[i])
-            j=0
+            #j=0
             #while j < len(cards) and j <1:
                 #cards.remove(cards[0])
                 #j+=1
-            discardMode(cards,1)
+            #discardMode(cards,1)
+            numDiscard=1
             cardText=random.choice(os.listdir(resource_path('Assets/Cards/finishedcards/')))
             cards.append(card(250+i*100,450,100,150,cardText))
             cardChosen=True
@@ -315,7 +357,12 @@ def cardFunction(characters,cards,mana):
             manaloss=1
         if cardChosen:
             characters[1].health-=damage*(1+characters[0].attack0)
-            return manaloss
-            break 
-    return manaloss
+            if damage>0:
+                characters[0].model=pygame.transform.rotate(pygame.transform.smoothscale(pygame.image.load(
+                    os.path.join('Assets/charDes/peep/','peep-attack-01.png')).convert_alpha(),(characters[0].width, characters[0].height)), 0)
+                pause=3000
+                redrawGameWindow(characters=characters,pause=pause)
+            return [manaloss, numDiscard]
+            #break 
+    return [manaloss, numDiscard]
 
